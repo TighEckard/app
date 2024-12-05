@@ -8,13 +8,13 @@ from fastapi import FastAPI, WebSocket, Request
 from fastapi.responses import HTMLResponse
 from twilio.rest import Client
 
-# Twilio credentials
-TWILIO_ACCOUNT_SID = "AC2db3da2359ec7eea8ec8e63bdf06de42"
-TWILIO_AUTH_TOKEN = "2111d9835709dae7531815fb57d15bbf"
+# Load sensitive values from environment variables
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "AC2db3da2359ec7eea8ec8e63bdf06de42")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "2111d9835709dae7531815fb57d15bbf")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "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")
+REDIRECT_PHONE_NUMBER = os.getenv("REDIRECT_PHONE_NUMBER", "+18123207803")
 
-# OpenAI API key and server settings
-OPENAI_API_KEY = "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"
-PORT = 5050
+PORT = int(os.getenv("PORT", 5050))
 
 # Constants for AI Assistant Behavior
 SYSTEM_MESSAGE = (
@@ -23,14 +23,18 @@ SYSTEM_MESSAGE = (
     "according to their issue. If someone could use advice from a doctor, ask if they would like to be redirected. "
     "If they say yes, say 108. You must stop speaking if the user starts talking during your response."
 )
-
-VOICE = 'coral'
-TEMPERATURE = 1.1
-REDIRECT_PHONE_NUMBER = "+18123207803"
+VOICE = os.getenv("VOICE", "coral")
+TEMPERATURE = float(os.getenv("TEMPERATURE", 1.1))
 
 # Initialize Twilio client and FastAPI app
 twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 app = FastAPI()
+
+
+# Root route
+@app.get("/")
+async def root():
+    return {"message": "Welcome to the Heroku-deployed app!"}
 
 
 @app.api_route("/incoming-call", methods=["GET", "POST"])
@@ -44,6 +48,7 @@ async def handle_incoming_call(request: Request):
         </Connect>
     </Response>"""
     return HTMLResponse(content=response_content, media_type="application/xml")
+
 
 @app.websocket("/media-stream")
 async def handle_media_stream(websocket: WebSocket):
@@ -136,6 +141,7 @@ async def handle_media_stream(websocket: WebSocket):
     finally:
         await websocket.close()
 
+
 @app.api_route("/redirecting-call", methods=["POST"])
 async def handle_redirecting_call(request: Request):
     response_content = f"""<?xml version="1.0" encoding="UTF-8"?>
@@ -143,6 +149,7 @@ async def handle_redirecting_call(request: Request):
         <Dial>{REDIRECT_PHONE_NUMBER}</Dial>
     </Response>"""
     return HTMLResponse(content=response_content, media_type="application/xml")
+
 
 async def send_session_update(openai_ws):
     try:
@@ -165,6 +172,7 @@ async def send_session_update(openai_ws):
     except Exception as e:
         print(f"ERROR: Failed to send session update to OpenAI: {e}")
 
+
 async def send_stop_audio(openai_ws):
     try:
         stop_audio = {"type": "stop_audio_output"}
@@ -172,6 +180,7 @@ async def send_stop_audio(openai_ws):
     except Exception as e:
         print(f"ERROR: Failed to send stop_audio_output command: {e}")
 
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=5050)
+    uvicorn.run(app, host="0.0.0.0", port=PORT)
