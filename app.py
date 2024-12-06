@@ -9,11 +9,12 @@ from fastapi import FastAPI, WebSocket, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from twilio.rest import Client
 
-# Load sensitive values from environment variables
-TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "AC2db3da2359ec7eea8ec8e63bdf06de42")
-TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "2111d9835709dae7531815fb57d15bbf")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "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")
-REDIRECT_PHONE_NUMBER = os.getenv("REDIRECT_PHONE_NUMBER", "+18123207803")
+
+
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+REDIRECT_PHONE_NUMBER = os.getenv("REDIRECT_PHONE_NUMBER")
 
 PORT = int(os.getenv("PORT", 5050))
 
