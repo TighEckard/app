@@ -4,6 +4,7 @@ import asyncio
 import websockets
 import os
 import sys  # Added for inline progress dots
+import time  # For performance logging
 from fastapi import FastAPI, WebSocket, Request
 from fastapi.responses import HTMLResponse
 from twilio.rest import Client
@@ -30,32 +31,40 @@ TEMPERATURE = float(os.getenv("TEMPERATURE", 1.1))
 twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 app = FastAPI()
 
-
 # Root route
 @app.get("/")
 async def root():
     return {"message": "Welcome to the Heroku-deployed app!"}
 
-
 @app.api_route("/incoming-call", methods=["GET", "POST"])
 async def handle_incoming_call(request: Request):
-    global global_hostname
-    global_hostname = request.url.hostname  # Save the hostname for later use in WebSocket
-    response_content = f"""<?xml version="1.0" encoding="UTF-8"?>
-    <Response>
-        <Connect>
-            <Stream url="wss://{request.url.hostname}/media-stream" />
-        </Connect>
-    </Response>"""
-    return HTMLResponse(content=response_content, media_type="application/xml")
-
+    start_time = time.time()
+    try:
+        global global_hostname
+        global_hostname = request.url.hostname
+        print(f"Received incoming call request. Hostname: {global_hostname}")
+        
+        response_content = f"""<?xml version="1.0" encoding="UTF-8"?>
+        <Response>
+            <Connect>
+                <Stream url="wss://{request.url.hostname}/media-stream" />
+            </Connect>
+        </Response>"""
+        print("Returning Twilio XML response.")
+        return HTMLResponse(content=response_content, media_type="application/xml")
+    except Exception as e:
+        print(f"ERROR in /incoming-call: {e}")
+        return HTMLResponse(content="<Response><Reject/></Response>", media_type="application/xml", status_code=500)
+    finally:
+        print(f"/incoming-call processed in {time.time() - start_time:.2f} seconds")
 
 @app.websocket("/media-stream")
 async def handle_media_stream(websocket: WebSocket):
-    global global_hostname
-    await websocket.accept()
-
     try:
+        print("Attempting to establish WebSocket connection.")
+        await websocket.accept()
+        print("WebSocket connection accepted.")
+        
         async with websockets.connect(
             'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01',
             extra_headers={
@@ -63,6 +72,7 @@ async def handle_media_stream(websocket: WebSocket):
                 "OpenAI-Beta": "realtime=v1"
             }
         ) as openai_ws:
+            print("Connected to OpenAI WebSocket.")
             await send_session_update(openai_ws)
 
             stream_sid = None
@@ -80,6 +90,7 @@ async def handle_media_stream(websocket: WebSocket):
                         if data['event'] == 'start':
                             stream_sid = data['start']['streamSid']
                             call_sid = data['start'].get('callSid')
+                            print(f"Stream SID: {stream_sid}, Call SID: {call_sid}")
                         elif data['event'] == 'media' and openai_ws.open:
                             if ai_is_speaking:
                                 await send_stop_audio(openai_ws)
@@ -92,6 +103,7 @@ async def handle_media_stream(websocket: WebSocket):
                             sys.stdout.write(".")  # Print a dot for activity
                             sys.stdout.flush()  # Ensure immediate output
                         elif data['event'] == 'stop':
+                            print("Twilio stream stopped.")
                             break
                     except Exception as e:
                         print(f"ERROR: Error processing Twilio message: {e}")
@@ -110,6 +122,7 @@ async def handle_media_stream(websocket: WebSocket):
                             if keyword in transcribed_text.lower():
                                 redirect_triggered = True
                                 if call_sid:
+                                    print("Redirecting call to the specified number.")
                                     twilio_client.calls(call_sid).update(
                                         url=f"https://{global_hostname}/redirecting-call",
                                         method="POST"
@@ -139,17 +152,21 @@ async def handle_media_stream(websocket: WebSocket):
     except Exception as e:
         print(f"ERROR: Error connecting to OpenAI WebSocket: {e}")
     finally:
+        print("Closing WebSocket connection.")
         await websocket.close()
-
 
 @app.api_route("/redirecting-call", methods=["POST"])
 async def handle_redirecting_call(request: Request):
-    response_content = f"""<?xml version="1.0" encoding="UTF-8"?>
-    <Response>
-        <Dial>{REDIRECT_PHONE_NUMBER}</Dial>
-    </Response>"""
-    return HTMLResponse(content=response_content, media_type="application/xml")
-
+    try:
+        response_content = f"""<?xml version="1.0" encoding="UTF-8"?>
+        <Response>
+            <Dial>{REDIRECT_PHONE_NUMBER}</Dial>
+        </Response>"""
+        print("Redirecting call.")
+        return HTMLResponse(content=response_content, media_type="application/xml")
+    except Exception as e:
+        print(f"ERROR in /redirecting-call: {e}")
+        return HTMLResponse(content="<Response><Reject/></Response>", media_type="application/xml", status_code=500)
 
 async def send_session_update(openai_ws):
     try:
@@ -169,17 +186,17 @@ async def send_session_update(openai_ws):
             }
         }
         await openai_ws.send(json.dumps(session_update))
+        print("Session update sent to OpenAI.")
     except Exception as e:
         print(f"ERROR: Failed to send session update to OpenAI: {e}")
-
 
 async def send_stop_audio(openai_ws):
     try:
         stop_audio = {"type": "stop_audio_output"}
         await openai_ws.send(json.dumps(stop_audio))
+        print("Stop audio command sent to OpenAI.")
     except Exception as e:
         print(f"ERROR: Failed to send stop_audio_output command: {e}")
-
 
 if __name__ == "__main__":
     import uvicorn
