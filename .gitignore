@@ -1,0 +1,86 @@
+# Ignore system and configuration files
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.ini
+*.DAT
+
+# Ignore IDE and editor settings
+.vscode/
+.idea/
+*.iml
+
+# Ignore user-specific configuration
+*.lesshst
+*.gitconfig
+*.ngrok2/
+*.omnisharp/
+*.oracle_jre_usage/
+.redhat/
+
+# Ignore environment and cache directories
+__pycache__/
+.cache/
+.env/
+custom_temp/
+deploy/
+.deletable/
+node_modules/
+
+# Ignore build artifacts and temporary files
+*.class
+*.pyc
+*.swp
+*.lock
+
+# Ignore unnecessary binary or large files
+*.stl
+*.wav
+
+# Ignore sensitive and environment-related files
+.env
+Procfile
+audio.wav
+test_audio.wav
+
+# Ignore specific project directories
+Documents/
+Downloads/
+Music/
+Videos/
+Saved Games/
+AndroidStudioProjects/
+Classroom/
+OneDrive/
+
+# Ignore subdirectories and unused assets
+2d fluid simulation attempt 1/
+3d/
+3D Mobile/
+3D Mobile Game/
+3d platform levels tutorial/
+3D tetris/
+alien world/
+First 3D Mobile Game/
+Holdens Visual 1/
+Holdens Visual 2/
+Mobile Game 1/
+mobile game tester/
+Mobile Project/
+My First Mobile Game/
+My project/
+our project/
+realistic asset store stuff/
+source/
+terrain/
+Terrain 2/
+Terrain 3D/
+
+# Ignore miscellaneous files
+testfile.py
+test_server2.py
+checkbalance.py
+example for will/
+experiment 2/
+First Mobile Game...No More Sprinkles/

@@ -6,7 +6,7 @@ import os
 import sys  # Added for inline progress dots
 import time  # For performance logging
 from fastapi import FastAPI, WebSocket, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from twilio.rest import Client
 
 # Load sensitive values from environment variables
@@ -32,12 +32,17 @@ twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 app = FastAPI()
 
 # Root route
-@app.get("/")
-async def root():
-    return {"message": "Welcome to the Heroku-deployed app!"}
+@app.api_route("/", methods=["GET", "HEAD"])
+async def root(request: Request):
+    if request.method == "HEAD":
+        return HTMLResponse(content="", status_code=200)
+    return JSONResponse(content={"message": "Welcome to the Heroku-deployed app!"})
 
-@app.api_route("/incoming-call", methods=["GET", "POST"])
+@app.api_route("/incoming-call", methods=["GET", "POST", "HEAD"])
 async def handle_incoming_call(request: Request):
+    if request.method == "HEAD":
+        return HTMLResponse(content="", status_code=200)
+    
     start_time = time.time()
     try:
         global global_hostname
